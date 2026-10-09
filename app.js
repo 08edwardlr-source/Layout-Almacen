@@ -94,3 +94,878 @@ function focusMaterial(query){
  const previous={scale,panX,panY};
  if(!query){schedule();return;}const q=query.toUpperCase(),lq=locationOf(query);const matches=boxes.filter(b=>b.location.includes(lq)||[...(groups.get(b.location)?.keys()??[])].some(code=>code.includes(q)));if(!matches.length){schedule();return;}
  $('rack').value='';const left=Math.min(...matches.map(b=>b.x)),top=Math.min(...matches.map(b=>b.y)),right=Math.max(...matches.map(b=>b.x+b.w)),bottom=Math.max(...matches.map(b=>b.y+b.h));scale=Math.min(1.4,vw/(right-left+160),vh/(bottom-top+160));panX=vw/2-(left+right)/2*scale;panY=vh/2-(top+bottom)/2*scale;if(matches.length===1){selected=matches[0].location;detail(matches[0]);}const target={scale,panX,panY};scale=previous.scale;panX=previous.panX;panY=previous.panY;animateView(target);
+
+ }
+
+function toHex(value) {
+  if (/^#[0-9a-f]{6}$/i.test(value)) return value;
+
+  const rgb = value.match(/hsl\(([\d.]+) ([\d.]+)% ([\d.]+)%\)/);
+  if (!rgb) return "#d7eef8";
+
+  const h = Number(rgb[1]) / 360;
+  const s = Number(rgb[2]) / 100;
+  const l = Number(rgb[3]) / 100;
+  const a = s * Math.min(l, 1 - l);
+
+  const f = n => {
+    const k = (n + h * 12) % 12;
+
+    return Math.round(
+      (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255
+    ).toString(16).padStart(2, "0");
+  };
+
+  return "#" + f(0) + f(8) + f(4);
+}
+
+function exportImage() {
+  cancelAnimationFrame(animationFrame);
+  hoverLocation = null;
+
+  const mode = $("exportscope").value;
+
+  if (mode === "rack" && !$("rack").value) {
+    throw Error("Selecciona un rack antes de exportar.");
+  }
+
+  const state = {
+    vw,
+    vh,
+    scale,
+    panX,
+    panY,
+    rack: $("rack").value,
+    query: $("search").value,
+    selected
+  };
+
+  try {
+    if (mode === "all") $("rack").value = "";
+
+    $("search").value = "";
+    selected = null;
+
+    vw = 1800;
+    vh = mode === "all" ? 1300 : 1800;
+
+    canvas.width = vw * (devicePixelRatio || 1);
+    canvas.height = vh * (devicePixelRatio || 1);
+
+    fit();
+    draw();
+
+    return canvas.toDataURL("image/png");
+  } finally {
+    vw = state.vw;
+    vh = state.vh;
+    scale = state.scale;
+    panX = state.panX;
+    panY = state.panY;
+    selected = state.selected;
+
+    $("rack").value = state.rack;
+    $("search").value = state.query;
+
+    resize();
+  }
+}
+
+$("exportpng").onclick = () => {
+  try {
+    const a = document.createElement("a");
+
+    a.href = exportImage();
+    a.download =
+      "Layout_" +
+      ($("exportscope").value === "all"
+        ? "Completo"
+        : "Rack_" + $("rack").value) +
+      ".png";
+
+    a.click();
+  } catch (e) {
+    $("status").textContent = e.message;
+  }
+};
+
+$("exportpdf").onclick = () => {
+  try {
+    const url = exportImage();
+    const win = window.open("", "_blank");
+
+    if (!win) {
+      throw Error(
+        "Permite abrir la ventana de impresión para guardar el PDF."
+      );
+    }
+
+    win.document.write(`
+      <!doctype html>
+      <html lang="es">
+      <head>
+        <title>Layout de almacén</title>
+        <style>
+          @page {
+            size: A3 landscape;
+            margin: 10mm;
+          }
+
+          body {
+            margin: 0;
+            font: 14px Arial;
+          }
+
+          img {
+            width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+          }
+
+          p {
+            margin: 8px 0;
+          }
+
+          @media print {
+            button {
+              display: none;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <button onclick="window.print()">
+          Imprimir / guardar como PDF
+        </button>
+        <p>Layout de almacén</p>
+        <img alt="Plano del almacén">
+      </body>
+      </html>
+    `);
+
+    win.document.close();
+
+    const img = win.document.querySelector("img");
+
+    img.onload = () => {
+      win.focus();
+      win.print();
+    };
+
+    img.src = url;
+  } catch (e) {
+    $("status").textContent = e.message;
+  }
+};
+
+canvas.addEventListener("pointermove", e => {
+  if (drag) return;
+
+  const r = canvas.getBoundingClientRect();
+  const x = (e.clientX - r.left - panX) / scale;
+  const y = (e.clientY - r.top - panY) / scale;
+  const rack = $("rack").value;
+
+  const hit = boxes.find(b =>
+    x >= b.x &&
+    x <= b.x + b.w &&
+    y >= b.y &&
+    y <= b.y + b.h &&
+    (!rack || !b.rack || String(b.rack) === rack)
+  );
+
+  const next = hit?.location || null;
+
+  if (next !== hoverLocation) {
+    hoverLocation = next;
+
+    canvas.title =
+      next || "Arrastra para mover · Rueda para zoom";
+
+    schedule();
+  }
+});
+
+canvas.addEventListener("pointerleave", () => {
+  hoverLocation = null;
+  schedule();
+});
+
+// Crear archivos XLSX sin librerías externas.
+function zipStored(files) {
+  const encoder = new TextEncoder();
+  const parts = [];
+  const central = [];
+
+  let offset = 0;
+
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+
+    for (let k = 0; k < 8; k++) {
+      c = (c & 1) ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+
+    return c >>> 0;
+  });
+
+  for (const [path, value] of Object.entries(files)) {
+    const name = encoder.encode(path);
+    const data =
+      typeof value === "string" ? encoder.encode(value) : value;
+
+    let crc = 0xffffffff;
+
+    for (const byte of data) {
+      crc = crcTable[(crc ^ byte) & 255] ^ (crc >>> 8);
+    }
+
+    crc = (crc ^ 0xffffffff) >>> 0;
+
+    const local = new Uint8Array(30 + name.length);
+    const v = new DataView(local.buffer);
+
+    v.setUint32(0, 0x04034b50, true);
+    v.setUint16(4, 20, true);
+    v.setUint16(6, 0x800, true);
+    v.setUint16(12, 0x21, true);
+    v.setUint32(14, crc, true);
+    v.setUint32(18, data.length, true);
+    v.setUint32(22, data.length, true);
+    v.setUint16(26, name.length, true);
+
+    local.set(name, 30);
+    parts.push(local, data);
+
+    const head = new Uint8Array(46 + name.length);
+    const h = new DataView(head.buffer);
+
+    h.setUint32(0, 0x02014b50, true);
+    h.setUint16(4, 20, true);
+    h.setUint16(6, 20, true);
+    h.setUint16(8, 0x800, true);
+    h.setUint16(14, 0x21, true);
+    h.setUint32(16, crc, true);
+    h.setUint32(20, data.length, true);
+    h.setUint32(24, data.length, true);
+    h.setUint16(28, name.length, true);
+    h.setUint32(42, offset, true);
+
+    head.set(name, 46);
+    central.push(head);
+
+    offset += local.length + data.length;
+  }
+
+  const size = central.reduce((n, p) => n + p.length, 0);
+  const end = new Uint8Array(22);
+  const v = new DataView(end.buffer);
+
+  v.setUint32(0, 0x06054b50, true);
+  v.setUint16(8, central.length, true);
+  v.setUint16(10, central.length, true);
+  v.setUint32(12, size, true);
+  v.setUint32(16, offset, true);
+
+  return new Blob([...parts, ...central, end], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  });
+}
+
+function buildLayoutWorkbook(png, width, height, legendRows) {
+  const ns =
+    "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+
+  const rel =
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+
+  const esc = value =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  const col = n => {
+    let result = "";
+
+    while (n) {
+      n--;
+      result = String.fromCharCode(65 + n % 26) + result;
+      n = Math.floor(n / 26);
+    }
+
+    return result;
+  };
+
+  const data = new Map();
+  const merges = [];
+  const widths = new Map();
+  const cache = new Map();
+
+  const styles = [
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+  ];
+
+  const fills = [
+    '<fill><patternFill patternType="none"/></fill>',
+    '<fill><patternFill patternType="gray125"/></fill>'
+  ];
+
+  function style(hex, font = 0) {
+    const key = hex + font;
+
+    if (cache.has(key)) return cache.get(key);
+
+    const id = styles.length;
+    const fill = fills.length;
+
+    fills.push(`
+      <fill>
+        <patternFill patternType="solid">
+          <fgColor rgb="FF${hex.replace("#", "").toUpperCase()}"/>
+          <bgColor indexed="64"/>
+        </patternFill>
+      </fill>
+    `);
+
+    styles.push(`
+      <xf numFmtId="0" fontId="${font}" fillId="${fill}"
+          borderId="1" xfId="0" applyFill="1"
+          applyFont="1" applyBorder="1" applyAlignment="1">
+        <alignment horizontal="center"
+                   vertical="center" wrapText="1"/>
+      </xf>
+    `);
+
+    cache.set(key, id);
+    return id;
+  }
+
+  const white = style("#ffffff");
+  const label = style("#eef3f7", 1);
+  const head = style("#173b59", 2);
+  const path = style("#d3eadd", 1);
+  const selectorStyle = style("#fff1a8", 1);
+
+  function cell(r, c, value, s = white) {
+    if (!data.has(r)) data.set(r, new Map());
+    data.get(r).set(c, { v: value, s });
+  }
+
+  function block(r, c, rr, cc, value, s) {
+    for (let y = r; y <= rr; y++) {
+      for (let x = c; x <= cc; x++) {
+        cell(y, x, "", s);
+      }
+    }
+
+    cell(r, c, value, s);
+
+    if (r !== rr || c !== cc) {
+      merges.push(`${col(c)}${r}:${col(cc)}${rr}`);
+    }
+  }
+
+  const scope = $("exportscope").value;
+  const rack = $("rack").value;
+
+  if (scope === "rack" && !rack) {
+    throw Error("Selecciona un rack.");
+  }
+
+  const selectedRacks = racks.filter(r =>
+    scope === "all" || String(r.r) === rack
+  );
+
+  const selectedBoxes = boxes.filter(b =>
+    scope === "all" || b.rack === Number(rack)
+  );
+
+  const maxBay =
+    scope === "rack" && Number(rack) <= 9 ? 14 : 32;
+
+  const baySlots = new Map();
+  const bayRows = new Map();
+
+  let cursor = 3;
+
+  for (let bay = maxBay; bay >= 1; bay--) {
+    const capacity = Math.max(
+      1,
+      ...selectedBoxes
+        .filter(b =>
+          !b.path &&
+          Number(
+            b.location.match(/^R\d{2}[A-D](\d{2})/)?.[1]
+          ) === bay
+        )
+        .map(b => groups.get(b.location)?.size || 0)
+    );
+
+    baySlots.set(bay, capacity);
+    bayRows.set(bay, cursor);
+    cursor += capacity + 1;
+  }
+
+  const bayRow = bay => bayRows.get(bay);
+  const lastStorage = cursor - 1;
+  const columns = new Map();
+  const walk = [];
+
+  let next = 1;
+
+  for (const r of selectedRacks) {
+    const letters = r.r % 2 ? "ABCD" : "DCBA";
+    const split = [11, 12, 19].includes(r.r);
+
+    const cols = split
+      ? [...letters].flatMap(l =>
+          r.r % 2
+            ? [l + ".1", l + ".2"]
+            : [l + ".2", l + ".1"]
+        )
+      : [...letters];
+
+    const start = next;
+
+    for (const c of cols) {
+      columns.set(r.r + ":" + c, next);
+      widths.set(next, 15);
+      next++;
+    }
+
+    block(1, start, 1, next - 1, "RACK " + r.r, head);
+
+    widths.set(next, 3);
+
+    if (scope === "all" && r.r % 2 === 0) {
+      widths.set(next, 7);
+      walk.push({ c: next, r: r.r });
+    }
+
+    next++;
+  }
+
+  const lastCol = next - 2;
+  const legendCol = lastCol + 3;
+  const selectRef = col(legendCol + 1) + "2";
+  const highlightRanges = [];
+
+  function materialBlock(location, r, c, capacity = 1) {
+    const items = [...(groups.get(location)?.values() ?? [])];
+
+    for (let n = 0; n < items.length; n++) {
+      const item = items[n];
+
+      cell(
+        r + n,
+        c,
+        item.code + "\n(" + fmt(item.qty) + ")",
+        style(toHex(color(item.code)))
+      );
+
+      highlightRanges.push(`${col(c)}${r + n}`);
+    }
+
+    if (items.length < capacity) {
+      block(
+        r + items.length,
+        c,
+        r + capacity - 1,
+        c,
+        "",
+        white
+      );
+    }
+
+    cell(r + capacity, c, location, label);
+  }
+
+  for (const b of selectedBoxes) {
+    if (!b.rack) continue;
+
+    if (b.location === "JAULA") {
+      const c = columns.get("10:A");
+
+      if (c) {
+        const first = bayRow(6);
+        const capacity = Math.max(
+          baySlots.get(6),
+          groups.get("JAULA")?.size || 0
+        );
+
+        materialBlock("JAULA", first, c, capacity);
+
+        for (
+          let r = first + capacity + 1;
+          r <= lastStorage;
+          r++
+        ) {
+          cell(r, c, "", white);
+        }
+
+        cell(lastStorage, c, "JAULA", label);
+      }
+
+      continue;
+    }
+
+    const m = b.location.match(
+      /^R(\d{2})([A-D])(\d{2})(?:\.(\d))?$/
+    );
+
+    if (!m) continue;
+
+    const c = columns.get(
+      Number(m[1]) + ":" + m[2] +
+      (m[4] ? "." + m[4] : "")
+    );
+
+    const r = bayRow(Number(m[3]));
+    const capacity = baySlots.get(Number(m[3]));
+
+    if (b.path) {
+      block(
+        r,
+        c,
+        r + capacity,
+        c,
+        "PASO PEATONAL\n" + b.location,
+        path
+      );
+    } else {
+      materialBlock(b.location, r, c, capacity);
+    }
+  }
+
+  const shortStart = bayRow(14);
+
+  for (const w of walk) {
+    block(
+      w.r <= 8 ? shortStart : 3,
+      w.c,
+      lastStorage,
+      w.c,
+      "PASILLO PEATONAL",
+      path
+    );
+  }
+
+  if (scope === "all") {
+    const zoneLast = columns.get("9:D");
+
+    block(
+      3, 1, bayRow(23) - 1, zoneLast,
+      "ZONA DE BLOQUEO", white
+    );
+
+    block(
+      bayRow(23), 1, shortStart - 1, zoneLast,
+      "ZONA DE SALDOS", white
+    );
+  }
+
+  block(
+    lastStorage + 2,
+    1,
+    lastStorage + 2,
+    lastCol,
+    "PASILLO FRONTAL · CIRCULACIÓN",
+    path
+  );
+
+  let lastRow = lastStorage + 3;
+
+  if (scope === "all") {
+    let c = 1;
+
+    for (const zone of ["TRASVASE", "OFICINA", "PASILLO 4"]) {
+      const capacity = Math.max(1, groups.get(zone)?.size || 0);
+
+      materialBlock(zone, lastStorage + 4, c, capacity);
+
+      lastRow = Math.max(
+        lastRow,
+        lastStorage + 4 + capacity
+      );
+
+      c += 2;
+    }
+  }
+
+  widths.set(legendCol, 14);
+  widths.set(legendCol + 1, 22);
+  widths.set(legendCol + 2, 18);
+
+  block(
+    1, legendCol, 1, legendCol + 2,
+    "BUSCAR MATERIAL · SIN MACROS", head
+  );
+
+  cell(2, legendCol, "Seleccionar código", label);
+  cell(2, legendCol + 1, "", selectorStyle);
+  cell(3, legendCol, "Elige un código en la celda amarilla.", label);
+
+  block(
+    4, legendCol, 4, legendCol + 2,
+    "LEYENDA DE MATERIALES", head
+  );
+
+  ["Tipo", "Código", "Cantidad"].forEach((value, i) => {
+    cell(5, legendCol + i, value, head);
+  });
+
+  legendRows.forEach((item, i) => {
+    cell(i + 6, legendCol, item.type);
+    cell(i + 6, legendCol + 1, item.code, style(item.hex));
+    cell(i + 6, legendCol + 2, item.qty);
+  });
+
+  lastRow = Math.max(lastRow, legendRows.length + 5);
+
+  const codes = [...new Set(legendRows.map(r => r.code))].sort();
+
+  const codeRows = codes.map((code, i) => `
+    <row r="${i + 1}">
+      <c r="A${i + 1}" t="inlineStr">
+        <is><t>${esc(code)}</t></is>
+      </c>
+    </row>
+  `).join("");
+
+  const rows = [...data]
+    .sort((a, b) => a[0] - b[0])
+    .map(([r, cells]) => {
+      const content = [...cells]
+        .sort((a, b) => a[0] - b[0])
+        .map(([c, { v, s }]) => {
+          const ref = col(c) + r;
+
+          if (typeof v === "number") {
+            return `<c r="${ref}" s="${s}"><v>${v}</v></c>`;
+          }
+
+          return `
+            <c r="${ref}" s="${s}" t="inlineStr">
+              <is><t xml:space="preserve">${esc(v)}</t></is>
+            </c>
+          `;
+        }).join("");
+
+      return `
+        <row r="${r}" ht="${r === 1 ? 28 : 44}" customHeight="1">
+          ${content}
+        </row>
+      `;
+    }).join("");
+
+  const cf = highlightRanges.map((range, i) => {
+    const fixed = range.replace(/([A-Z]+)(\d+)/, "$$$1$$$2");
+    const select = "$" + col(legendCol + 1) + "$2";
+
+    return `
+      <conditionalFormatting sqref="${range}">
+        <cfRule type="expression" dxfId="0" priority="${i + 1}">
+          <formula>AND(${select}&lt;&gt;"",LEFT(${fixed},FIND(CHAR(10),${fixed}&amp;CHAR(10))-1)=${select})</formula>
+        </cfRule>
+      </conditionalFormatting>
+    `;
+  }).join("");
+
+  const types =
+    "http://schemas.openxmlformats.org/package/2006/content-types";
+
+  const pkg =
+    "http://schemas.openxmlformats.org/package/2006/relationships";
+
+  return zipStored({
+    "[Content_Types].xml": `
+      <Types xmlns="${types}">
+        <Default Extension="rels"
+          ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+        <Default Extension="xml" ContentType="application/xml"/>
+        <Override PartName="/xl/workbook.xml"
+          ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+        <Override PartName="/xl/styles.xml"
+          ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+        ${[1, 2].map(n => `
+          <Override PartName="/xl/worksheets/sheet${n}.xml"
+            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+        `).join("")}
+      </Types>
+    `,
+
+    "_rels/.rels": `
+      <Relationships xmlns="${pkg}">
+        <Relationship Id="rId1" Type="${rel}/officeDocument"
+          Target="xl/workbook.xml"/>
+      </Relationships>
+    `,
+
+    "xl/workbook.xml": `
+      <workbook xmlns="${ns}" xmlns:r="${rel}">
+        <sheets>
+          <sheet name="Layout editable" sheetId="1" r:id="rId1"/>
+          <sheet name="Codigos" sheetId="2" state="hidden" r:id="rId2"/>
+        </sheets>
+        <definedNames>
+          <definedName name="ListaCodigos">Codigos!$A$1:$A$${Math.max(1, codes.length)}</definedName>
+          <definedName name="_xlnm.Print_Area" localSheetId="0">'Layout editable'!$A$1:$${col(legendCol + 2)}$${lastRow}</definedName>
+        </definedNames>
+        <calcPr calcId="191029" fullCalcOnLoad="1"/>
+      </workbook>
+    `,
+
+    "xl/_rels/workbook.xml.rels": `
+      <Relationships xmlns="${pkg}">
+        ${[1, 2].map(n => `
+          <Relationship Id="rId${n}" Type="${rel}/worksheet"
+            Target="worksheets/sheet${n}.xml"/>
+        `).join("")}
+        <Relationship Id="rId3" Type="${rel}/styles" Target="styles.xml"/>
+      </Relationships>
+    `,
+
+    "xl/styles.xml": `
+      <styleSheet xmlns="${ns}">
+        <fonts count="3">
+          <font><sz val="14"/><name val="Calibri"/></font>
+          <font><b/><sz val="10"/><name val="Calibri"/></font>
+          <font><b/><sz val="12"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+        </fonts>
+        <fills count="${fills.length}">${fills.join("")}</fills>
+        <borders count="2">
+          <border><left/><right/><top/><bottom/><diagonal/></border>
+          <border>
+            ${["left", "right", "top", "bottom"].map(side => `
+              <${side} style="thin"><color rgb="FF000000"/></${side}>
+            `).join("")}
+            <diagonal/>
+          </border>
+        </borders>
+        <cellStyleXfs count="1">
+          <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+        </cellStyleXfs>
+        <cellXfs count="${styles.length}">${styles.join("")}</cellXfs>
+        <cellStyles count="1">
+          <cellStyle name="Normal" xfId="0" builtinId="0"/>
+        </cellStyles>
+        <dxfs count="1">
+          <dxf>
+            <font><b/><color rgb="FF000000"/></font>
+            <fill>
+              <patternFill patternType="solid">
+                <fgColor rgb="FFFFFF00"/>
+                <bgColor rgb="FFFFFF00"/>
+              </patternFill>
+            </fill>
+          </dxf>
+        </dxfs>
+      </styleSheet>
+    `,
+
+    "xl/worksheets/sheet1.xml": `
+      <worksheet xmlns="${ns}">
+        <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
+        <dimension ref="A1:${col(legendCol + 2)}${lastRow}"/>
+        <sheetViews>
+          <sheetView workbookViewId="0" showGridLines="0" zoomScale="40"/>
+        </sheetViews>
+        <sheetFormatPr defaultRowHeight="22"/>
+        <cols>
+          ${[...widths].sort((a, b) => a[0] - b[0]).map(([c, w]) => `
+            <col min="${c}" max="${c}" width="${w}" customWidth="1"/>
+          `).join("")}
+        </cols>
+        <sheetData>${rows}</sheetData>
+        <mergeCells count="${merges.length}">
+          ${merges.map(m => `<mergeCell ref="${m}"/>`).join("")}
+        </mergeCells>
+        ${cf}
+        <dataValidations count="1">
+          <dataValidation type="list" allowBlank="1"
+            showErrorMessage="1" errorTitle="Código no válido"
+            error="Elige un código de la lista." sqref="${selectRef}">
+            <formula1>ListaCodigos</formula1>
+          </dataValidation>
+        </dataValidations>
+        <pageMargins left="0.25" right="0.25" top="0.25"
+          bottom="0.25" header="0" footer="0"/>
+        <pageSetup paperSize="8" orientation="landscape"
+          fitToWidth="1" fitToHeight="1"/>
+      </worksheet>
+    `,
+
+    "xl/worksheets/sheet2.xml": `
+      <worksheet xmlns="${ns}">
+        <sheetData>${codeRows}</sheetData>
+      </worksheet>
+    `
+  });
+}
+
+$("exportexcel").onclick = async () => {
+  const button = $("exportexcel");
+  button.disabled = true;
+
+  try {
+    if (!records.length) {
+      throw Error("Carga tu plantilla antes de descargar el Excel.");
+    }
+
+    const scope = $("exportscope").value;
+    const rack = $("rack").value;
+    const totals = new Map();
+
+    for (const r of records) {
+      if (
+        scope === "rack" &&
+        byLocation.get(r.location)?.rack !== Number(rack)
+      ) {
+        continue;
+      }
+
+      const key = JSON.stringify([r.type, r.code]);
+
+      if (!totals.has(key)) {
+        totals.set(key, {
+          type: r.type,
+          code: r.code,
+          qty: 0,
+          hex: toHex(color(r.code))
+        });
+      }
+
+      totals.get(key).qty += r.qty;
+    }
+
+    const legendRows = [...totals.values()].sort((a, b) =>
+      a.type.localeCompare(b.type) ||
+      a.code.localeCompare(b.code, "es", { numeric: true })
+    );
+
+    const blob = buildLayoutWorkbook(null, 0, 0, legendRows);
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = href;
+    a.download =
+      "Layout_" +
+      (scope === "all" ? "Completo" : "Rack_" + rack) +
+      ".xlsx";
+
+    a.click();
+
+    setTimeout(() => URL.revokeObjectURL(href), 30000);
+
+    $("status").textContent =
+      "Excel editable descargado: elige el código en la celda " +
+      "amarilla junto a la leyenda. Sin macros.";
+  } catch (e) {
+    $("status").textContent = "Error: " + e.message;
+  } finally {
+    button.disabled = false;
+  }
+};
+ 
