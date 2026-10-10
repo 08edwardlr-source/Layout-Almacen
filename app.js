@@ -37,7 +37,8 @@ function rect(x,y,w,h,fill,stroke){ctx.fillStyle=fill;ctx.fillRect(x,y,w,h);if(s
 function text(s,x,y,size=15,fill='#17324a',maxWidth){ctx.fillStyle=fill;ctx.font=`600 ${size}px Segoe UI,Arial`;ctx.textAlign='center';ctx.textBaseline='middle';if(maxWidth)ctx.fillText(s,x,y,maxWidth);else ctx.fillText(s,x,y);}
 let hoverLocation=null,animationFrame=0;
 function draw(){const dpr=devicePixelRatio||1;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,vw,vh);ctx.fillStyle='#e7edf3';ctx.fillRect(0,0,vw,vh);ctx.translate(panX,panY);ctx.scale(scale,scale);const rack=$('rack').value,query=$('search').value.trim().toUpperCase(),lq=locationOf(query);const visible=b=>(b.x+b.w)*scale+panX>=0&&b.x*scale+panX<=vw&&(b.y+b.h)*scale+panY>=0&&b.y*scale+panY<=vh;
-if(!rack){for(const lane of lanes){rect(lane.x,TOP,lane.w,BOTTOM-TOP,'#d3eadd','#ddb72b');text('↑',lane.x+lane.w/2,BOTTOM-70,40,'#367756');}rect(25,BOTTOM+40,worldWidth-50,65,'#d3eadd','#ddb72b');text('↔ PASILLO FRONTAL ↔',worldWidth/2,BOTTOM+73,22,'#367756');const left=racks.find(r=>r.r===10).x-20;rect(25,TOP,left-25,(32-14)*(CH+GAP)-20,'#fff','#99adbd');text('ZONA DE BLOQUEO',left/2,TOP+450,35,'#c55443');text('ZONA DE SALDOS',left/2,TOP+1300,35,'#c55443');}
+if(!rack){for(const lane of lanes){rect(lane.x,TOP,lane.w,BOTTOM-TOP,'#d3eadd','#ddb72b');text('↑',lane.x+lane.w/2,BOTTOM-70,40,'#367756');}rect(25,BOTTOM+40,worldWidth-50,65,'#d3eadd','#ddb72b');text('↔ PASILLO FRONTAL ↔',worldWidth/2,BOTTOM+73,22,'#367756');const left=racks.find(r=>r.r===10).x-20;rect(25,TOP,left-25,(32-14)*(CH+GAP)-20,'#fff','#99adbd');text("PFN", left / 2, TOP + 450, 110, "#c55443");
+text("ZONA DE SALDOS", left / 2, TOP + 1300, 100, "#c55443");}
 for(const r of racks){if(rack&&String(r.r)!==rack)continue;rect(r.x-5,r.y-40,r.width+10,32,'#173b59');text('RACK '+r.r,r.x+r.width/2,r.y-24,19,'white');}
 for(const b of boxes){if(rack&&b.rack&&String(b.rack)!==rack)continue;if(!visible(b))continue;const items=[...(groups.get(b.location)?.values()??[])];const match=!query||b.location.includes(lq)||items.some(i=>i.code.includes(query));ctx.globalAlpha=match?1:.2;if(b.path){rect(b.x,b.y,b.w,b.h,'#d3eadd','#deb72b');if(scale>.16){text('PASO',b.x+b.w/2,b.y+b.h/2-8,16,'#367756');text(b.location,b.x+b.w/2,b.y+b.h/2+15,11,'#367756');}ctx.globalAlpha=1;continue;}
 rect(b.x,b.y,b.w,b.h,items.length===1?color(items[0].code):'#fff','#8399aa');const labelHeight=25,bodyHeight=b.h-labelHeight;if(items.length){const segment=bodyHeight/items.length;items.forEach((i,n)=>{rect(b.x+1,b.y+n*segment+1,b.w-2,segment-1,color(i.code));if(scale>.12){const f=Math.max(7,Math.min(21,segment/3));text(i.code,b.x+b.w/2,b.y+n*segment+segment*.35,f,'#17324a',b.w-8);text('('+fmt(i.qty)+')',b.x+b.w/2,b.y+n*segment+segment*.7,f-1,'#17324a',b.w-8);}});}else if(scale>.35)text('Vacía',b.x+b.w/2,b.y+bodyHeight/2,13,'#9aabba');rect(b.x+1,b.y+b.h-labelHeight,b.w-2,labelHeight-1,'#ffffffbb');if(scale>.10)text(b.location,b.x+b.w/2,b.y+b.h-labelHeight/2,12,'#173b59',b.w-4);if(selected===b.location){ctx.strokeStyle='#007e91';ctx.lineWidth=3/scale;ctx.strokeRect(b.x,b.y,b.w,b.h);}ctx.globalAlpha=1;}
@@ -850,11 +851,32 @@ block(
 
     "xl/styles.xml": `
       <styleSheet xmlns="${ns}">
-        <fonts count="3">
-          <font><sz val="14"/><name val="Calibri"/></font>
-          <font><b/><sz val="10"/><name val="Calibri"/></font>
-          <font><b/><sz val="12"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-        </fonts>
+        <fonts count="4">
+  <font>
+    <sz val="14"/>
+    <name val="Calibri"/>
+  </font>
+
+  <font>
+    <b/>
+    <sz val="10"/>
+    <name val="Calibri"/>
+  </font>
+
+  <font>
+    <b/>
+    <sz val="12"/>
+    <color rgb="FFFFFFFF"/>
+    <name val="Calibri"/>
+  </font>
+
+  <font>
+    <b/>
+    <sz val="64"/>
+    <color rgb="FF173B59"/>
+    <name val="Calibri"/>
+  </font>
+</fonts>
         <fills count="${fills.length}">${fills.join("")}</fills>
         <borders count="2">
           <border><left/><right/><top/><bottom/><diagonal/></border>
