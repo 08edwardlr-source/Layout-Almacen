@@ -447,6 +447,7 @@ function buildLayoutWorkbook(png, width, height, legendRows) {
   const head = style("#173b59", 2);
   const path = style("#d3eadd", 1);
   const selectorStyle = style("#fff1a8", 1);
+ const zoneStyle = style("#ffffff", 3);
 
   function cell(r, c, value, s = white) {
     if (!data.has(r)) data.set(r, new Map());
@@ -535,7 +536,18 @@ function buildLayoutWorkbook(png, width, height, legendRows) {
       next++;
     }
 
-    block(1, start, 1, next - 1, "RACK " + r.r, head);
+    // Racks 5 al 9: título junto a sus cuadros.
+// Racks 10 al 19: título en la parte superior.
+const headerRow = r.r <= 9 ? bayRow(14) - 1 : 1;
+
+block(
+  headerRow,
+  start,
+  headerRow,
+  next - 1,
+  "RACK " + r.r,
+  head
+);
 
     widths.set(next, 3);
 
@@ -653,18 +665,27 @@ function buildLayoutWorkbook(png, width, height, legendRows) {
   }
 
   if (scope === "all") {
-    const zoneLast = columns.get("9:D");
+  const zoneLast = columns.get("9:D");
 
-    block(
-      3, 1, bayRow(23) - 1, zoneLast,
-      "ZONA DE BLOQUEO", white
-    );
+  block(
+    3,
+    1,
+    bayRow(23) - 1,
+    zoneLast,
+    "PFN",
+    zoneStyle
+  );
 
-    block(
-      bayRow(23), 1, shortStart - 1, zoneLast,
-      "ZONA DE SALDOS", white
-    );
-  }
+  // Deja una fila libre para los títulos de los racks 5 al 9.
+  block(
+    bayRow(23),
+    1,
+    shortStart - 2,
+    zoneLast,
+    "ZONA DE SALDOS",
+    zoneStyle
+  );
+}
 
   block(
     lastStorage + 2,
