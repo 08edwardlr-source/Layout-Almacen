@@ -10,3 +10,36 @@ button:active{transform:translateY(0)}
 .panel:hover,.metric:hover{border-color:#a5bdce;box-shadow:0 4px 14px #173b5910}
 .chip:hover{box-shadow:0 0 0 2px #173b5955}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Tema azul industrial */
+:root{--ink:#18374d;--navy:#173b59;--teal:#087f91;--surface:#f7fafc;--edge:#d2dfe9;--shadow:0 8px 26px rgba(23,59,89,.07)}
+body{background:#e8eff5;color:var(--ink)}
+header{background:linear-gradient(115deg,#112c43,#1c5470);border-bottom:4px solid #25b4b1;padding:26px 32px}
+header h1{font-size:28px;letter-spacing:-.5px}header p{color:#d1eaf0;opacity:1}
+main{max-width:1920px;margin:auto;padding:24px}
+.toolbar,.panel,.metric{background:var(--surface);border-color:var(--edge);box-shadow:var(--shadow);border-radius:16px}
+.toolbar{padding:20px;gap:18px}label{color:#31546d;font-size:13px}
+input,select{background:#edf4f9;border-color:#c9d9e5;border-radius:9px;min-height:42px}
+input:focus,select:focus{outline:3px solid #18a7b326;border-color:var(--teal)}
+button{background:#e5eff6;border:1px solid #bfd2e1;border-radius:9px;font-weight:600;padding:11px 15px;color:#234a64}
+button:hover{background:#d7ecf2;color:#075b69;border-color:#19a3ad;box-shadow:0 4px 12px #173b5920}
+button:focus-visible,summary:focus-visible{outline:3px solid #0894a4;outline-offset:3px}
+button:disabled{opacity:.55;cursor:wait;transform:none}
+#exportexcel{background:#176b57;color:#fff;border-color:#176b57}#exportexcel:hover{background:#115543}
+#exportpng,#exportpdf{background:#244c6c;color:#fff;border-color:#244c6c}
+#status{background:#d7e9f0;border:1px solid #b9d8e3;border-left:4px solid #178a9d;padding:14px 18px;border-radius:10px;color:#21465e}
+#viewport{background:#dce7ef;border:2px solid #aac3d3;border-radius:16px;box-shadow:inset 0 0 0 5px #eef5fa,0 10px 30px #173b5910}
+.mapheading h2{font-size:21px;letter-spacing:-.4px;color:#153f5c}
+#zoomlabel{background:#d5e8ef;border:1px solid #b3d4df;color:#126475;border-radius:8px;padding:8px 12px;font-weight:700}
+.metric{border-top:4px solid #1c7895;padding:18px}.metric:nth-child(2){border-top-color:#6a8a9f}.metric:nth-child(3){border-top-color:#218975}.metric:nth-child(4){border-top-color:#bf9145}.metric:nth-child(5){border-top-color:#92739e}
+.metric strong{font-size:28px;color:#16445e}.metric span{color:#536e80}
+.rackstat{background:#dbe8f1;color:#28536d;border-color:#bdd1df;border-radius:8px}
+.panel h2{font-size:20px;color:#194c67}.hint{color:#527087}
+.typegroup{background:#eef5fa;border-color:#cbdde9;border-radius:12px}.typegroup h3{padding:15px;background:#244c6c}
+.typegroup .IMP{background:#2b638a}.typegroup .NAC{background:#1e7967}.typegroup .EXP{background:#9b743b}
+.chips{padding:15px;gap:10px}.chip{border-radius:8px;color:#17324a;border-color:#6a82944d}.chip:hover{filter:brightness(.97);color:#17324a}
+.colorpair input{border:1px solid #b3c9d9;background:#edf4f9;border-radius:8px}
+#detail{border-left:5px solid #1695a2}#warnings{background:#fff1d3;border-color:#e6c88b;border-left:5px solid #c89227}
+table th{background:#e2edf5;color:#24516d;font-size:13px}td,th{padding:12px;border-color:#d5e2eb}table tbody tr:hover{background:#ebf5f8}
+summary{color:#28536d}details.panel{background:#e8f1f7}
+@media(max-width:750px){main{padding:12px}header{padding:20px}.mapheading{align-items:flex-start;gap:12px;flex-direction:column}.exportbar{gap:7px}.toolbar{padding:15px}.metric{padding:14px}}
