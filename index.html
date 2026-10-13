@@ -2,173 +2,69 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1"
-  >
-
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Layout de almacén</title>
-
-  <!-- Diseño azul industrial -->
-  <link
-    rel="stylesheet"
-    href="./styles.css?v=20261013-diseno1"
-  >
-
-  <!-- Sistema de layout actualizado -->
-  <script
-    defer
-    src="./app.js?v=20261013-diseno1"
-  ></script>
+  <link rel="stylesheet" href="./styles.css?v=20261013-interfaz2">
+  <script defer src="./app.js?v=20261013-interfaz2"></script>
 </head>
-
 <body>
-  <header>
-    <h1>Layout de almacén</h1>
-    <p>Inventario por ubicación · Caminos peatonales</p>
-  </header>
+  <div class="app-shell">
+    <aside class="navigation" aria-label="Navegación principal">
+      <a class="brand" href="#workspace"><span class="brand-mark">AL</span><span>Almacén<small>Control de ubicaciones</small></span></a>
+      <p class="nav-caption">ESPACIO DE TRABAJO</p>
+      <nav>
+        <button class="nav-item active" data-panel="detail" aria-pressed="true">Plano del almacén</button>
+        <button class="nav-item" data-panel="materials" aria-pressed="false">Materiales</button>
+        <button class="nav-item" data-panel="alerts" aria-pressed="false">Alertas</button>
+        <button class="nav-item" data-panel="exports" aria-pressed="false">Exportaciones</button>
+      </nav>
+      <details class="import-guide">
+        <summary>Cómo preparar el Excel</summary>
+        <p>Columnas: CODIGO, UBICACIÓN y TOTAL EN UNI. TIPO es opcional: IMP, NAC o EXP.</p>
+        <p>Áreas: TRASVASE, PASILLO 4 y OFICINA. Recalcula y guarda el archivo antes de cargarlo.</p>
+      </details>
+      <div class="nav-footer"><span class="local-dot"></span>Datos procesados en tu navegador</div>
+    </aside>
 
-  <main>
-    <section class="toolbar">
-      <label>
-        Plantilla Excel
+    <main id="workspace" class="workspace">
+      <header class="topbar">
+        <div class="page-title"><p>OPERACIONES / INVENTARIO</p><h1>Layout de almacén</h1></div>
+        <label class="upload-control">Cargar cuadre<input id="file" type="file" accept=".xlsx" aria-label="Cargar plantilla Excel"></label>
+      </header>
+      <section id="metrics" class="metrics" aria-label="Indicadores de inventario"></section>
+      <p id="status" role="status">Carga tu plantilla para comenzar.</p>
 
-        <input
-          id="file"
-          type="file"
-          accept=".xlsx"
-        >
-      </label>
+      <div class="workbench">
+        <section class="map-card" aria-label="Vista del almacén">
+          <div class="map-toolbar toolbar">
+            <label class="search-control"><span>Buscar material o ubicación</span><input id="search" placeholder="Código, R19A01.1 o TRASVASE"></label>
+            <label class="rack-control"><span>Rack</span><select id="rack"><option value="">Todos</option></select></label>
+            <button id="clear" class="quiet-button">Limpiar</button>
+          </div>
+          <div class="mapheading"><div><h2>Plano general</h2><p>Selecciona una ubicación para consultar sus materiales.</p></div><span id="zoomlabel">100%</span></div>
+          <div id="viewport"><canvas id="canvas" tabindex="0" aria-label="Plano interactivo del almacén"></canvas></div>
+          <div class="map-help"><span>Arrastra para mover</span><span>Rueda o touchpad para zoom</span><span>Doble clic para ajustar</span></div>
+        </section>
 
-      <label>
-        Buscar código o ubicación
-
-        <input
-          id="search"
-          placeholder="423719 o R19A01.1"
-        >
-      </label>
-
-      <label>
-        Rack
-
-        <select id="rack">
-          <option value="">Todos</option>
-        </select>
-      </label>
-
-      <button id="clear">
-        Limpiar búsqueda
-      </button>
-    </section>
-
-    <section
-      id="metrics"
-      class="metrics"
-      aria-label="Indicadores de inventario"
-    ></section>
-
-    <p id="status" role="status">
-      Carga tu plantilla para comenzar.
-    </p>
-
-    <div class="mapheading">
-      <h2>Plano del almacén</h2>
-
-      <div class="exportbar">
-        <span id="zoomlabel">100%</span>
-
-        <select id="exportscope">
-          <option value="all">
-            Plano completo
-          </option>
-
-          <option value="rack">
-            Rack seleccionado
-          </option>
-        </select>
-
-        <button id="exportpng">
-          Descargar imagen
-        </button>
-
-        <button id="exportexcel">
-          Descargar Excel
-        </button>
-
-        <button id="exportpdf">
-          Imprimir / PDF
-        </button>
+        <aside class="inspector" aria-label="Información del almacén">
+          <div class="inspector-tabs" role="group" aria-label="Panel de información">
+            <button class="active" data-panel="detail" aria-pressed="true">Detalle</button>
+            <button data-panel="materials" aria-pressed="false">Materiales</button>
+            <button data-panel="alerts" aria-pressed="false">Alertas</button>
+          </div>
+          <section class="inspector-view" data-view="detail"><div class="panel" id="detail"><h2>Detalle de ubicación</h2><p>Selecciona un cuadro del plano.</p></div></section>
+          <section class="inspector-view" data-view="materials" hidden>
+            <div class="panel legend-panel"><h2>Materiales</h2><p class="hint">Selecciona un código para ubicarlo en el plano.</p>
+              <div class="material-tabs" role="group" aria-label="Tipo de material">
+                <button class="active" data-material-type="TODOS" aria-pressed="true">Todos</button><button data-material-type="IMP" aria-pressed="false">IMP</button><button data-material-type="NAC" aria-pressed="false">NAC</button><button data-material-type="EXP" aria-pressed="false">EXP</button><button data-material-type="SIN TIPO" aria-pressed="false">Sin tipo</button>
+              </div><div id="legend"></div><p id="legendempty" class="hint" hidden>No hay materiales de este tipo.</p>
+            </div>
+          </section>
+          <section class="inspector-view" data-view="alerts" hidden><div class="panel"><h2>Alertas del inventario</h2><p id="alertsEmpty" class="hint">No hay alertas. Carga un cuadre para revisarlo.</p><div id="warnings" hidden></div></div></section>
+          <section class="inspector-view" data-view="exports" hidden><div class="panel"><h2>Exportar layout</h2><p class="hint">Elige el alcance y el formato de descarga.</p><label>Alcance<select id="exportscope"><option value="all">Plano completo</option><option value="rack">Rack seleccionado</option></select></label><div class="export-actions"><button id="exportexcel">Descargar Excel editable</button><button id="exportpng">Descargar imagen</button><button id="exportpdf">Imprimir / PDF</button></div><p class="hint">Para exportar un rack, selecciónalo primero en el plano. El Excel incluye la leyenda de materiales.</p></div></section>
+        </aside>
       </div>
-    </div>
-
-    <p class="hint">
-      Rueda, dos dedos o pellizco: zoom interno ·
-      Arrastra para mover el plano ·
-      Shift + rueda: desplazar ·
-      Doble clic: ajustar la vista.
-    </p>
-
-    <div id="viewport">
-      <canvas
-        id="canvas"
-        tabindex="0"
-        aria-label="Plano interactivo del almacén. Selecciona una ubicación para consultar sus materiales."
-      ></canvas>
-    </div>
-
-    <section class="panel" id="detail">
-      <h2>Detalle de ubicación</h2>
-      <p>Selecciona un cuadro.</p>
-    </section>
-
-    <section
-      class="panel"
-      id="warnings"
-      hidden
-    ></section>
-
-    <section class="panel">
-      <h2>Materiales por tipo</h2>
-
-      <p class="hint">
-        Pulsa un código para centrarlo.
-        Usa su selector para cambiar el color;
-        se conserva en este navegador.
-      </p>
-
-      <div id="legend"></div>
-    </section>
-
-    <details class="panel">
-      <summary>
-        Condiciones de la plantilla
-      </summary>
-
-      <p>
-        CODIGO, UBICACIÓN y TOTAL EN UNI son obligatorios.
-        Agrega TIPO con IMP, NAC o EXP para separar los materiales.
-        Las otras columnas se ignoran.
-        Recalcula y guarda el Excel antes de cargarlo.
-        Se procesa localmente, sin internet.
-      </p>
-
-      <p>
-        Pasos peatonales: A07, A08, B07, B08,
-        A23, A24, B23 y B24, incluidas las subdivisiones
-        .1 y .2, en los racks 5 al 18.
-        El rack 19 permanece continuo.
-        Los materiales registrados en un paso peatonal
-        aparecen en los avisos para revisar su ubicación.
-      </p>
-
-      <p>
-        Para materiales de las áreas adicionales,
-        usa TRASVASE, PASILLO 4 u OFICINA
-        en la columna UBICACIÓN.
-      </p>
-    </details>
-  </main>
+    </main>
+  </div>
 </body>
 </html>
