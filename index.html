@@ -4,45 +4,48 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Layout de almacén</title>
-  <link rel="stylesheet" href="./styles.css?v=20261013-interfaz2">
-  <script defer src="./app.js?v=20261013-interfaz2"></script>
+  <link rel="stylesheet" href="./styles.css?v=20261022-diseno3">
+  <script defer src="./app.js?v=20261022-diseno3"></script>
 </head>
 <body>
   <div class="app-shell">
     <aside class="navigation" aria-label="Navegación principal">
-      <a class="brand" href="#workspace"><span class="brand-mark">AL</span><span>Almacén<small>Control de ubicaciones</small></span></a>
-      <p class="nav-caption">ESPACIO DE TRABAJO</p>
+      <a class="brand" href="#workspace"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Almacén<small>Control de ubicaciones</small></span></a>
       <nav>
-        <button class="nav-item active" data-panel="detail" aria-pressed="true">Plano del almacén</button>
-        <button class="nav-item" data-panel="materials" aria-pressed="false">Materiales</button>
-        <button class="nav-item" data-panel="alerts" aria-pressed="false">Alertas</button>
-        <button class="nav-item" data-panel="exports" aria-pressed="false">Exportaciones</button>
+        <button class="nav-item active" data-panel="detail" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>Plano</button>
+        <button class="nav-item" data-panel="materials" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg>Materiales</button>
+        <button class="nav-item" data-panel="alerts" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20zM12 10v5M12 18v.5"/></svg>Alertas</button>
+        <button class="nav-item" data-panel="exports" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>Exportar</button>
       </nav>
       <details class="import-guide">
         <summary>Cómo preparar el Excel</summary>
-        <p>Columnas: CODIGO, UBICACIÓN y TOTAL EN UNI. TIPO es opcional: IMP, NAC o EXP.</p>
-        <p>Áreas: TRASVASE, PASILLO 4 y OFICINA. Recalcula y guarda el archivo antes de cargarlo.</p>
+        <p>Columnas: <b>CODIGO</b>, <b>UBICACIÓN</b> y <b>TOTAL EN UNI</b>. <b>TIPO</b> es opcional: IMP, NAC o EXP.</p>
+        <p>Áreas especiales: TRASVASE, PASILLO 4 y OFICINA. Recalcula y guarda el archivo antes de cargarlo.</p>
       </details>
-      <div class="nav-footer"><span class="local-dot"></span>Datos procesados en tu navegador</div>
+      <div class="nav-footer"><span class="local-dot"></span>Tus datos se procesan solo en este navegador</div>
     </aside>
 
     <main id="workspace" class="workspace">
       <header class="topbar">
-        <div class="page-title"><p>OPERACIONES / INVENTARIO</p><h1>Layout de almacén</h1></div>
-        <label class="upload-control">Cargar cuadre<input id="file" type="file" accept=".xlsx" aria-label="Cargar plantilla Excel"></label>
+        <div class="page-title"><p>Operaciones · Inventario</p><h1>Layout de almacén</h1></div>
+        <label class="upload-control"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>Cargar cuadre<input id="file" type="file" accept=".xlsx" aria-label="Cargar plantilla Excel"></label>
       </header>
+
       <section id="metrics" class="metrics" aria-label="Indicadores de inventario"></section>
-      <p id="status" role="status">Carga tu plantilla para comenzar.</p>
+      <p id="status" role="status">Carga tu cuadre en Excel para ver el almacén.</p>
 
       <div class="workbench">
         <section class="map-card" aria-label="Vista del almacén">
           <div class="map-toolbar toolbar">
-            <label class="search-control"><span>Buscar material o ubicación</span><input id="search" placeholder="Código, R19A01.1 o TRASVASE"></label>
+            <label class="search-control"><span>Buscar</span><input id="search" type="search" placeholder="Código de material, R19A01.1 o TRASVASE"></label>
             <label class="rack-control"><span>Rack</span><select id="rack"><option value="">Todos</option></select></label>
             <button id="clear" class="quiet-button">Limpiar</button>
           </div>
-          <div class="mapheading"><div><h2>Plano general</h2><p>Selecciona una ubicación para consultar sus materiales.</p></div><span id="zoomlabel">100%</span></div>
-          <div id="viewport"><canvas id="canvas" tabindex="0" aria-label="Plano interactivo del almacén"></canvas></div>
+          <div class="mapheading"><div><h2>Plano general</h2><p>Toca una ubicación para ver sus materiales.</p></div><span id="zoomlabel">100%</span></div>
+          <div id="viewport">
+            <canvas id="canvas" tabindex="0" aria-label="Plano interactivo del almacén"></canvas>
+            <div class="dropzone" id="dropzone"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M9 14l2 2 4-4"/></svg><strong>Arrastra aquí tu Excel</strong><span>o usa «Cargar cuadre». Solo archivos .xlsx.</span></div></div>
+          </div>
           <div class="map-help"><span>Arrastra para mover</span><span>Rueda o touchpad para zoom</span><span>Doble clic para ajustar</span></div>
         </section>
 
@@ -54,14 +57,14 @@
           </div>
           <section class="inspector-view" data-view="detail"><div class="panel" id="detail"><h2>Detalle de ubicación</h2><p>Selecciona un cuadro del plano.</p></div></section>
           <section class="inspector-view" data-view="materials" hidden>
-            <div class="panel legend-panel"><h2>Materiales</h2><p class="hint">Selecciona un código para ubicarlo en el plano.</p>
+            <div class="panel legend-panel"><h2>Materiales</h2><p class="hint">Elige un código para ubicarlo en el plano. El cuadro de color cambia su color.</p>
               <div class="material-tabs" role="group" aria-label="Tipo de material">
                 <button class="active" data-material-type="TODOS" aria-pressed="true">Todos</button><button data-material-type="IMP" aria-pressed="false">IMP</button><button data-material-type="NAC" aria-pressed="false">NAC</button><button data-material-type="EXP" aria-pressed="false">EXP</button><button data-material-type="SIN TIPO" aria-pressed="false">Sin tipo</button>
               </div><div id="legend"></div><p id="legendempty" class="hint" hidden>No hay materiales de este tipo.</p>
             </div>
           </section>
-          <section class="inspector-view" data-view="alerts" hidden><div class="panel"><h2>Alertas del inventario</h2><p id="alertsEmpty" class="hint">No hay alertas. Carga un cuadre para revisarlo.</p><div id="warnings" hidden></div></div></section>
-          <section class="inspector-view" data-view="exports" hidden><div class="panel"><h2>Exportar layout</h2><p class="hint">Elige el alcance y el formato de descarga.</p><label>Alcance<select id="exportscope"><option value="all">Plano completo</option><option value="rack">Rack seleccionado</option></select></label><div class="export-actions"><button id="exportexcel">Descargar Excel editable</button><button id="exportpng">Descargar imagen</button><button id="exportpdf">Imprimir / PDF</button></div><p class="hint">Para exportar un rack, selecciónalo primero en el plano. El Excel incluye la leyenda de materiales.</p></div></section>
+          <section class="inspector-view" data-view="alerts" hidden><div class="panel"><h2>Alertas del inventario</h2><p id="alertsEmpty" class="hint">Sin alertas. Carga un cuadre para revisarlo.</p><div id="warnings" hidden></div></div></section>
+          <section class="inspector-view" data-view="exports" hidden><div class="panel"><h2>Exportar layout</h2><p class="hint">Elige qué parte del plano descargar y en qué formato.</p><label>Alcance<select id="exportscope"><option value="all">Plano completo</option><option value="rack">Rack seleccionado</option></select></label><div class="export-actions"><button id="exportexcel">Descargar Excel editable</button><button id="exportpng">Descargar imagen</button><button id="exportpdf">Imprimir / PDF</button></div><p class="hint">Para exportar un solo rack, selecciónalo primero en el plano. El Excel incluye la leyenda de materiales.</p></div></section>
         </aside>
       </div>
     </main>
